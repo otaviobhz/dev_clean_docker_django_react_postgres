@@ -21,54 +21,48 @@ on:
 jobs:
   deploy:
     name: Deploy to VPS via ZeroTier
-    runs-on: ubuntu-latest
+    runs-on: self-hosted  # Usa o runner instalado no servidor!
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: 22
-          script: |
-            set -e
+      - name: Deploy local
+        run: |
+          set -e
 
-            echo "=== Iniciando Deploy no VPS ==="
+          echo "=== Iniciando Deploy no VPS ==="
 
-            # Navegar para o diretório do projeto
-            # ⚠️ CONFIGURÁVEL: Mude 'dev_clean_docker_django_react_postgres' para o nome do seu novo projeto
-            cd /Projetos_Oficial/dev/dev_clean_docker_django_react_postgres
+          # Navegar para o diretório do projeto
+          # ⚠️ CONFIGURÁVEL: Mude 'dev_clean_docker_django_react_postgres' para o nome do seu novo projeto
+          cd /Projetos_Oficial/dev/dev_clean_docker_django_react_postgres
 
-            echo "=== Atualizando código do repositório ==="
-            git fetch origin
-            git reset --hard origin/${{ github.event.inputs.branch || 'main' }}
+          echo "=== Atualizando código do repositório ==="
+          git fetch origin
+          git reset --hard origin/${{ github.event.inputs.branch || 'main' }}
 
-            echo "=== Copiando arquivo de ambiente de produção ==="
-            cp .env.production .env
+          echo "=== Copiando arquivo de ambiente de produção ==="
+          cp .env.production .env
 
-            echo "=== Parando containers antigos ==="
-            docker compose -f docker-compose.prod.yml down || true
+          echo "=== Parando containers antigos ==="
+          docker compose -f docker-compose.prod.yml down || true
 
-            echo "=== Removendo imagens antigas (opcional) ==="
-            docker image prune -f
+          echo "=== Removendo imagens antigas (opcional) ==="
+          docker image prune -f
 
-            echo "=== Construindo novas imagens ==="
-            docker compose -f docker-compose.prod.yml build --no-cache
+          echo "=== Construindo novas imagens ==="
+          docker compose -f docker-compose.prod.yml build --no-cache
 
-            echo "=== Iniciando containers ==="
-            docker compose -f docker-compose.prod.yml up -d
+          echo "=== Iniciando containers ==="
+          docker compose -f docker-compose.prod.yml up -d
 
-            echo "=== Aguardando inicialização dos containers ==="
-            sleep 10
+          echo "=== Aguardando inicialização dos containers ==="
+          sleep 10
 
-            echo "=== Verificando status dos containers ==="
-            docker compose -f docker-compose.prod.yml ps
+          echo "=== Verificando status dos containers ==="
+          docker compose -f docker-compose.prod.yml ps
 
-            echo "=== Verificando logs dos containers ==="
-            docker compose -f docker-compose.prod.yml logs --tail=30
+          echo "=== Verificando logs dos containers ==="
+          docker compose -f docker-compose.prod.yml logs --tail=30
 
-            echo "=== Deploy concluído com sucesso! ==="
+          echo "=== Deploy concluído com sucesso! ==="
 
       - name: Success
         if: success()
