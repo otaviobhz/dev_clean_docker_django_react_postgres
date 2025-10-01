@@ -1,22 +1,12 @@
 name: Deploy to VPS (ZeroTier)
 
 on:
-  # Opção 1: Deploy automático ao fazer push (DESCOMENTE para ativar)
-  # push:
-  #   branches: [ main ]
+  # Deploy automático ao fazer push
+  push:
+    branches: [ main ]
 
-  # Opção 2: Deploy manual - você escolhe quando fazer (ATIVO)
+  # Também permite deploy manual se necessário
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch para fazer deploy'
-        required: true
-        default: 'main'
-        type: choice
-        options:
-          - main
-          - develop
-          - staging
 
 jobs:
   deploy:
@@ -36,7 +26,7 @@ jobs:
 
           echo "=== Atualizando código do repositório ==="
           git fetch origin
-          git reset --hard origin/${{ github.event.inputs.branch || 'main' }}
+          git reset --hard origin/main
 
           echo "=== Copiando arquivo de ambiente de produção ==="
           cp .env.production .env
