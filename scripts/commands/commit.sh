@@ -38,9 +38,9 @@ if [ -z "$1" ]; then
 fi
 
 COMMIT_MESSAGE="$1"
-BRANCH="${2:-main}"
+BRANCH="${2:-dev}"
 
-echo -e "${YELLOW}📝 Branch:${NC} $BRANCH"
+echo -e "${YELLOW}📝 Branch:${NC} $BRANCH (desenvolvimento)"
 echo -e "${YELLOW}💬 Mensagem:${NC} $COMMIT_MESSAGE"
 echo ""
 
@@ -77,9 +77,12 @@ echo -e "${GREEN}✓${NC} Push realizado"
 echo ""
 
 echo -e "${GREEN}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║          ✅ COMMIT COMMAND COMPLETO            ║${NC}"
+echo -e "${GREEN}║          ✅ COMMIT SALVO EM DEV                ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${BLUE}ℹ️  Este commit NÃO vai fazer deploy automático${NC}"
-echo -e "${YELLOW}Para fazer deploy, use:${NC} deploy \"mensagem\""
+echo -e "${BLUE}ℹ️  Código salvo na branch 'dev' (desenvolvimento)${NC}"
+echo -e "${BLUE}ℹ️  Deploy NÃO foi executado (só acontece na main)${NC}"
+echo ""
+echo -e "${YELLOW}Quando estiver pronto para deploy:${NC}"
+echo -e "  deploy \"sua mensagem\""
 echo ""

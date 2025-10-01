@@ -3,7 +3,7 @@
 # ============================================================================
 # COMANDO: deploy
 # ============================================================================
-# Descrição: Faz commit, push e trigger do deploy automático no VPS
+# Descrição: Faz merge de dev→main e dispara deploy automático no VPS
 # Uso: ./scripts/commands/deploy.sh [mensagem do commit]
 # Ou após configurar alias: deploy "mensagem do commit"
 # ============================================================================
@@ -20,98 +20,112 @@ NC='\033[0m' # No Color
 # Banner
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║        🚀 DEPLOY COMMAND - VPS ZeroTier       ║${NC}"
-echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║        🚀 DEPLOY - Merge dev→main + VPS       ║${NC}"
+echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
 echo ""
 
 # Verificar se há mensagem de commit
 if [ -z "$1" ]; then
     echo -e "${RED}❌ Erro: Mensagem do commit é obrigatória${NC}"
     echo ""
-    echo "Uso: deploy \"sua mensagem de commit\""
+    echo "Uso: deploy \"sua mensagem de deploy\""
     echo ""
     echo "Exemplo:"
-    echo "  deploy \"fix: corrigir bug no login\""
-    echo "  deploy \"feat: adicionar nova funcionalidade\""
+    echo "  deploy \"feat: nova funcionalidade de relatórios\""
+    echo "  deploy \"fix: corrigir bug crítico no login\""
     echo ""
     exit 1
 fi
 
 COMMIT_MESSAGE="$1"
-BRANCH="${2:-main}"
 
-echo -e "${YELLOW}📝 Branch:${NC} $BRANCH"
 echo -e "${YELLOW}💬 Mensagem:${NC} $COMMIT_MESSAGE"
 echo ""
 
-# Verificar status do git
-echo -e "${BLUE}[1/5]${NC} Verificando mudanças..."
-if [[ -z $(git status -s) ]]; then
-    echo -e "${YELLOW}⚠️  Nenhuma mudança para commitar${NC}"
-    read -p "Deseja fazer deploy mesmo assim? (s/n) " -n 1 -r
+# Verificar branch atual
+CURRENT_BRANCH=$(git branch --show-current)
+echo -e "${BLUE}[1/7]${NC} Verificando branch atual..."
+echo -e "${YELLOW}📍 Branch atual:${NC} $CURRENT_BRANCH"
+echo ""
+
+# Se não estiver na dev, mudar para dev
+if [ "$CURRENT_BRANCH" != "dev" ]; then
+    echo -e "${YELLOW}⚠️  Mudando para branch dev...${NC}"
+    git checkout dev
     echo ""
-    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
-        echo -e "${RED}Deploy cancelado${NC}"
-        exit 0
-    fi
-else
-    git status -s
 fi
 
-echo ""
+# Verificar se há mudanças
+echo -e "${BLUE}[2/7]${NC} Verificando mudanças na branch dev..."
+if [[ ! -z $(git status -s) ]]; then
+    echo -e "${YELLOW}Mudanças detectadas:${NC}"
+    git status -s
+    echo ""
 
-# Git add
-echo -e "${BLUE}[2/5]${NC} Adicionando arquivos ao staging..."
-git add .
-echo -e "${GREEN}✓${NC} Arquivos adicionados"
-echo ""
+    # Git add
+    echo -e "${BLUE}[3/7]${NC} Adicionando arquivos ao staging..."
+    git add .
+    echo -e "${GREEN}✓${NC} Arquivos adicionados"
+    echo ""
 
-# Git commit
-echo -e "${BLUE}[3/5]${NC} Criando commit..."
-git commit -m "$COMMIT_MESSAGE
+    # Git commit na dev
+    echo -e "${BLUE}[4/7]${NC} Criando commit na dev..."
+    git commit -m "$COMMIT_MESSAGE
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
-echo -e "${GREEN}✓${NC} Commit criado"
-echo ""
-
-# Git push
-echo -e "${BLUE}[4/5]${NC} Enviando para GitHub..."
-git push origin $BRANCH
-echo -e "${GREEN}✓${NC} Push realizado"
-echo ""
-
-# Trigger deploy via GitHub CLI
-echo -e "${BLUE}[5/5]${NC} Iniciando deploy no VPS..."
-
-if command -v gh &> /dev/null; then
-    echo -e "${YELLOW}Usando GitHub CLI para trigger do workflow...${NC}"
-    gh workflow run "Deploy to VPS (ZeroTier)" --ref $BRANCH -f branch=$BRANCH
+    echo -e "${GREEN}✓${NC} Commit criado na dev"
     echo ""
-    echo -e "${GREEN}✓${NC} Deploy iniciado!"
+
+    # Push dev
+    echo -e "${BLUE}[5/7]${NC} Enviando dev para GitHub..."
+    git push origin dev
+    echo -e "${GREEN}✓${NC} Branch dev atualizada no GitHub"
     echo ""
-    echo -e "${YELLOW}📊 Acompanhe o deploy em:${NC}"
-    gh workflow view "Deploy to VPS (ZeroTier)" --web
 else
-    echo -e "${YELLOW}⚠️  GitHub CLI não instalado${NC}"
+    echo -e "${GREEN}✓${NC} Nenhuma mudança pendente na dev"
     echo ""
-    echo "Para trigger automático, instale o GitHub CLI:"
-    echo "  https://cli.github.com/"
-    echo ""
-    echo "Ou acesse manualmente:"
-    echo "  https://github.com/$(git remote get-url origin | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/actions"
-    echo ""
-    echo -e "${BLUE}Clique em 'Run workflow' e selecione a branch: $BRANCH${NC}"
 fi
 
+# Mudar para main
+echo -e "${BLUE}[6/7]${NC} Fazendo merge dev→main..."
+git checkout main
+git pull origin main
+git merge dev -m "Merge branch 'dev' into 'main' - $COMMIT_MESSAGE"
+echo -e "${GREEN}✓${NC} Merge realizado"
 echo ""
+
+# Push para main (dispara deploy automático)
+echo -e "${BLUE}[7/7]${NC} Enviando main para GitHub..."
+echo -e "${YELLOW}⚡ Isso vai disparar o deploy automático no VPS!${NC}"
+git push origin main
+echo -e "${GREEN}✓${NC} Push realizado - Deploy iniciado!"
+echo ""
+
+# Voltar para dev
+echo -e "${YELLOW}🔄 Voltando para branch dev...${NC}"
+git checkout dev
+echo ""
+
 echo -e "${GREEN}╔════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║           ✅ DEPLOY COMMAND COMPLETO           ║${NC}"
+echo -e "${GREEN}║         ✅ DEPLOY INICIADO COM SUCESSO!        ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════╝${NC}"
 echo ""
+
+echo -e "${BLUE}📊 Acompanhe o deploy em tempo real:${NC}"
+echo "   https://github.com/otaviobhz/dev_clean_docker_django_react_postgres/actions"
+echo ""
+
+echo -e "${YELLOW}⏱️  Aguarde ~2-3 minutos para o deploy completar${NC}"
+echo ""
+
 echo -e "${YELLOW}🌐 Aplicação estará disponível em:${NC}"
 echo "   - Frontend: http://10.147.20.52:8081"
 echo "   - API: http://10.147.20.52:8001"
 echo "   - Jupyter: http://10.147.20.52:9000"
+echo "   - PgAdmin: http://10.147.20.52:5051"
+echo ""
+
+echo -e "${GREEN}✓${NC} Você está de volta na branch dev para continuar desenvolvendo!"
 echo ""
