@@ -1,0 +1,79 @@
+name: Docker Compose Deploy
+
+# Workflow simplificado para deploy com docker-compose
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Full Stack
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          # Database
+          POSTGRES_DB=sample_project_db
+          POSTGRES_USER=admin
+          POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD || '12345' }}
+
+          # Django
+          DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY || 'change-this-in-production' }}
+          DJANGO_DEBUG=False
+          DJANGO_ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS || '*' }}
+
+          # URLs
+          FRONTEND_URL=${{ secrets.FRONTEND_URL || 'http://localhost:8081' }}
+          BACKEND_URL=${{ secrets.BACKEND_URL || 'http://localhost:8001' }}
+          EOF
+
+      - name: Build and start services
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services to start..."
+          sleep 30
+
+      - name: Check services health
+        run: |
+          docker compose ps
+          curl -f http://localhost:8001/api/health || exit 1
+          curl -f http://localhost:8081 || exit 1
+
+      - name: Run database migrations
+        run: |
+          docker compose exec -T jupyter_notebook python backend/django_project/manage.py migrate
+
+      - name: Show deployment info
+        run: |
+          echo "=== Deployment Successful ==="
+          echo "Frontend: http://localhost:8081"
+          echo "Backend API: http://localhost:8001/api/"
+          echo "API Docs: http://localhost:8001/api/docs"
+          docker compose ps
+
+      # Opcional: Criar backup do banco antes do deploy
+      - name: Backup database
+        if: ${{ secrets.ENABLE_BACKUP == 'true' }}
+        run: |
+          docker compose exec -T postgres_db pg_dump -U admin sample_project_db > backup-$(date +%Y%m%d-%H%M%S).sql
+
+      # Opcional: Upload de artefatos
+      - name: Upload deployment artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-logs
+          path: |
+            .env
+            docker-compose.yml

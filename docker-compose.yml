@@ -1,0 +1,88 @@
+services:
+  # Backend - Jupyter + Django Ninja
+  jupyter_notebook:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: sample_project_backend
+    ports:
+      - "9000:9000"  # Jupyter Notebook
+      - "8001:8001"  # Django Ninja API
+    volumes:
+      - ./:/app
+    depends_on:
+      - postgres_db
+    networks:
+      - app_network
+    restart: unless-stopped
+    environment:
+      - PYTHONPATH=/app
+
+  # Frontend - React (CORRIGIDO)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sample_project_frontend_react
+    ports:
+      - "8081:8081"    # CORRIGIDO: React roda na 8081 interna e externa
+    depends_on:
+      - jupyter_notebook
+    networks:
+      - app_network
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+
+  # Banco de Dados PostgreSQL
+  postgres_db:
+    image: postgres:15
+    container_name: postgres_sample_project
+    environment:
+      POSTGRES_DB: sample_project_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 12345
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./dbdata/postgres:/var/lib/postgresql/data
+      - ./backend/database/init:/docker-entrypoint-initdb.d
+      - ./backend/database/backups:/backups
+    networks:
+      - app_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d sample_project_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PgAdmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin_sample_project
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@sampleproject.com
+      PGADMIN_DEFAULT_PASSWORD: 12345
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5051:80"
+    volumes:
+      - ./dbdata/pgadmin:/var/lib/pgadmin
+      - ./backend/database/pgadmin-config:/pgadmin4/servers.json
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    networks:
+      - app_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  app_network:
+    driver: bridge

@@ -1,0 +1,13 @@
+Chrome Dev Tools
+
+claude mcp add chrome-devtools npx chrome-devtools-mcp@latest
+
+
+Context7
+
+claude mcp add context7 -- npx -y @upstash/context7-mcp@latest
+
+
+Sequential Thinking
+
+claude mcp add sequentialthinking npx @modelcontextprotocol/server-sequential-thinking
