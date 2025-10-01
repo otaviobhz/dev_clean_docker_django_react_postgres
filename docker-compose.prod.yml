@@ -1,0 +1,97 @@
+services:
+  # Backend - Jupyter + Django Ninja
+  jupyter_notebook:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: sample_project_backend
+    ports:
+      - "${JUPYTER_PORT:-9000}:9000"  # Jupyter Notebook
+      - "${DJANGO_PORT:-8001}:8001"   # Django Ninja API
+    volumes:
+      - ./:/app
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    networks:
+      - app_network
+    restart: always
+    environment:
+      - PYTHONPATH=/app
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings}
+      - DEBUG=${DEBUG:-False}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB}
+
+  # Frontend - React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+        - REACT_APP_API_URL=${REACT_APP_API_URL}
+    container_name: sample_project_frontend_react
+    ports:
+      - "${REACT_PORT:-8081}:8081"
+    depends_on:
+      - jupyter_notebook
+    networks:
+      - app_network
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=${REACT_APP_API_URL}
+
+  # Banco de Dados PostgreSQL
+  postgres_db:
+    image: postgres:15
+    container_name: postgres_sample_project
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: ${PGDATA}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - ./dbdata/postgres:/var/lib/postgresql/data
+      - ./backend/database/init:/docker-entrypoint-initdb.d
+      - ./backend/database/backups:/backups
+    networks:
+      - app_network
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PgAdmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin_sample_project
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "${PGADMIN_PORT:-5051}:80"
+    volumes:
+      - ./dbdata/pgadmin:/var/lib/pgadmin
+      - ./backend/database/pgadmin-config:/pgadmin4/servers.json
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+    networks:
+      - app_network
+    restart: always
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  app_network:
+    driver: bridge

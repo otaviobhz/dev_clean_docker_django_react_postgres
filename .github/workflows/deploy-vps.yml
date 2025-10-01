@@ -1,0 +1,72 @@
+name: Deploy to VPS (ZeroTier)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to VPS via ZeroTier
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: 22
+          script: |
+            set -e
+
+            echo "=== Iniciando Deploy no VPS ==="
+
+            # Navegar para o diretório do projeto
+            cd /Projetos_Oficial/dev/myps
+
+            echo "=== Atualizando código do repositório ==="
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "=== Copiando arquivo de ambiente de produção ==="
+            cp .env.production .env
+
+            echo "=== Parando containers antigos ==="
+            docker compose -f docker-compose.prod.yml down || true
+
+            echo "=== Removendo imagens antigas (opcional) ==="
+            docker image prune -f
+
+            echo "=== Construindo novas imagens ==="
+            docker compose -f docker-compose.prod.yml build --no-cache
+
+            echo "=== Iniciando containers ==="
+            docker compose -f docker-compose.prod.yml up -d
+
+            echo "=== Aguardando inicialização dos containers ==="
+            sleep 10
+
+            echo "=== Verificando status dos containers ==="
+            docker compose -f docker-compose.prod.yml ps
+
+            echo "=== Verificando logs dos containers ==="
+            docker compose -f docker-compose.prod.yml logs --tail=30
+
+            echo "=== Deploy concluído com sucesso! ==="
+
+      - name: Success
+        if: success()
+        run: |
+          echo "✅ Deploy to VPS completed successfully!"
+          echo "=== Aplicação disponível em: ==="
+          echo "  - Frontend: http://10.147.20.52:8081"
+          echo "  - API: http://10.147.20.52:8001"
+          echo "  - Jupyter: http://10.147.20.52:9000"
+          echo "  - PgAdmin: http://10.147.20.52:5051"
+
+      - name: Failure
+        if: failure()
+        run: |
+          echo "❌ Deploy failed! Check the logs above for details."
