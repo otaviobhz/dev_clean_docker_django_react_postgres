@@ -258,7 +258,7 @@ Após usar `deploy`, você pode:
 ```bash
 # Verificar containers no VPS:
 ssh otavio@10.147.20.52
-cd /Projetos_Oficial/dev/myps
+cd /Projetos_Oficial/dev/dev_clean_docker_django_react_postgres
 docker compose -f docker-compose.prod.yml ps
 ```
 

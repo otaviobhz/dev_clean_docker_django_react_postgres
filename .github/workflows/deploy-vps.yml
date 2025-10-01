@@ -37,7 +37,8 @@ jobs:
             echo "=== Iniciando Deploy no VPS ==="
 
             # Navegar para o diretório do projeto
-            cd /Projetos_Oficial/dev/myps
+            # ⚠️ CONFIGURÁVEL: Mude 'dev_clean_docker_django_react_postgres' para o nome do seu novo projeto
+            cd /Projetos_Oficial/dev/dev_clean_docker_django_react_postgres
 
             echo "=== Atualizando código do repositório ==="
             git fetch origin

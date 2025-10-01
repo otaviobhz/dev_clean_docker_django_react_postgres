@@ -13,7 +13,7 @@ echo ""
 # Configurações
 VPS_HOST="10.147.20.52"
 VPS_USER="otavio"
-PROJECT_PATH="/Projetos_Oficial/dev/myps"
+PROJECT_PATH="/Projetos_Oficial/dev/dev_clean_docker_django_react_postgres"
 
 echo "Conectando ao servidor $VPS_HOST..."
 echo ""
@@ -24,7 +24,7 @@ set -e
 echo "=== Iniciando Deploy no VPS ==="
 
 # Navegar para o diretório do projeto
-cd /Projetos_Oficial/dev/myps
+cd /Projetos_Oficial/dev/dev_clean_docker_django_react_postgres
 
 echo "=== Atualizando código do repositório ==="
 git fetch origin

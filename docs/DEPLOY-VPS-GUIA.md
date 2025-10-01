@@ -6,7 +6,7 @@ Este guia explica como configurar e realizar deploy automático da aplicação n
 
 - **IP ZeroTier**: 10.147.20.52
 - **Usuário SSH**: otavio
-- **Caminho do Projeto**: `/Projetos_Oficial/dev/myps`
+- **Caminho do Projeto**: `/Projetos_Oficial/dev/dev_clean_docker_django_react_postgres`
 
 ## 🚀 Portas Expostas
 
@@ -57,9 +57,9 @@ Execute os comandos:
 mkdir -p /Projetos_Oficial/dev
 cd /Projetos_Oficial/dev
 
-# Clonar repositório (ajuste a URL)
-git clone https://github.com/seu-usuario/myps.git
-cd myps
+# Clonar repositório
+git clone https://github.com/otaviobhz/dev_clean_docker_django_react_postgres.git dev_clean_docker_django_react_postgres
+cd dev_clean_docker_django_react_postgres
 
 # Copiar arquivo de ambiente
 cp .env.production .env
@@ -105,7 +105,7 @@ Ou conecte diretamente no servidor:
 
 ```bash
 ssh otavio@10.147.20.52
-cd /Projetos_Oficial/dev/myps
+cd /Projetos_Oficial/dev/dev_clean_docker_django_react_postgres
 git pull origin main
 docker compose -f docker-compose.prod.yml down
 docker compose -f docker-compose.prod.yml up -d --build
@@ -138,7 +138,7 @@ sudo apt install nginx
 
 ### 3. Configurar Nginx como Proxy Reverso
 
-Crie `/etc/nginx/sites-available/myps`:
+Crie `/etc/nginx/sites-available/dev_clean_docker_django_react_postgres`:
 
 ```nginx
 server {
@@ -164,7 +164,7 @@ server {
 Ative o site:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/myps /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/dev_clean_docker_django_react_postgres /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
@@ -182,7 +182,7 @@ sudo certbot --nginx -d hyperfocus.com.br
 
 ```bash
 ssh otavio@10.147.20.52
-cd /Projetos_Oficial/dev/myps
+cd /Projetos_Oficial/dev/dev_clean_docker_django_react_postgres
 docker compose -f docker-compose.prod.yml logs -f
 ```
 
