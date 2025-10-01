@@ -1,29 +1,23 @@
-# 🚀 Quick Start - Custom Commands
+# 🚀 Quick Start - Scripts de Deploy e Commit
 
-Comandos personalizados para deploy e commit fácil!
-
-## ⚡ Setup Rápido (Execute UMA VEZ)
-
-```bash
-source scripts/setup-aliases.sh
-```
+Scripts `.sh` para deploy e commit fácil - **SEM necessidade de aliases!**
 
 ## 📦 Comandos Disponíveis
 
-### `deploy` - Commit + Push + Deploy Automático
+### Deploy - Commit + Push + Deploy Automático
 
 ```bash
-deploy "feat: adicionar nova funcionalidade"
+./scripts/commands/deploy.sh "feat: adicionar nova funcionalidade"
 ```
 
 ✅ Faz tudo: commit → push → deploy no VPS
 
 ---
 
-### `commit` - Commit + Push (SEM Deploy)
+### Commit - Commit + Push (SEM Deploy)
 
 ```bash
-commit "docs: atualizar README"
+./scripts/commands/commit.sh "docs: atualizar README"
 ```
 
 ✅ Apenas: commit → push (útil para docs, testes, etc)
@@ -34,11 +28,11 @@ commit "docs: atualizar README"
 
 ```bash
 # Desenvolvimento normal (sem deploy ainda)
-commit "feat: adicionar formulário de login"
-commit "test: adicionar testes do formulário"
+./scripts/commands/commit.sh "feat: adicionar formulário de login"
+./scripts/commands/commit.sh "test: adicionar testes do formulário"
 
 # Quando estiver pronto para produção
-deploy "release: sistema de login completo"
+./scripts/commands/deploy.sh "release: sistema de login completo"
 ```
 
 ## 🌐 URLs de Acesso (Após Deploy)
@@ -59,8 +53,25 @@ deploy "release: sistema de login completo"
 ## 🎯 Fluxo Recomendado
 
 ```
-Trabalhar → commit → commit → commit → deploy
-            (sem deploy enquanto desenvolve)    (deploy quando pronto)
+Trabalhar → ./scripts/commands/commit.sh → commit → commit → ./scripts/commands/deploy.sh
+            (sem deploy enquanto desenvolve)                  (deploy quando pronto)
+```
+
+---
+
+## 🔄 Usar em Outros Projetos
+
+Para copiar os scripts para outro projeto:
+
+```bash
+./scripts/copy-to-project.sh /caminho/do/novo-projeto
+```
+
+Depois é só usar:
+```bash
+cd /caminho/do/novo-projeto
+./scripts/commands/deploy.sh "mensagem"
+./scripts/commands/commit.sh "mensagem"
 ```
 
 ---
