@@ -15,7 +15,9 @@ const Dashboard = () => {
       setBackendStatus('checking');
       setDatabaseStatus('checking');
 
-      const response = await fetch('http://localhost:8001/api/health', {
+      // Use environment variable or fallback to production IP
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://10.147.20.52:8001';
+      const response = await fetch(`${apiUrl}/api/health`, {
         mode: 'cors',
         headers: {
           'Content-Type': 'application/json',
