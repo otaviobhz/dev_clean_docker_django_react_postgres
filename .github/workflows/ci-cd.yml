@@ -1,79 +1,19 @@
 name: CI/CD Pipeline
 
-# Triggers: quando o workflow será executado
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch: # Permite executar manualmente
-
-# Variáveis de ambiente globais
-env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/myps
+  workflow_dispatch:
 
 jobs:
   # ============================================================================
-  # Job 1: Testes e Validação
-  # ============================================================================
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
-          pip install pytest pytest-django flake8
-
-      - name: Lint Python code
-        run: |
-          flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 backend/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install Node dependencies
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Lint frontend code
-        working-directory: ./frontend
-        run: |
-          # npm run lint || echo "Lint not configured, skipping"
-          echo "Frontend lint placeholder"
-
-      - name: Build frontend
-        working-directory: ./frontend
-        run: npm run build
-
-      - name: Run backend tests
-        run: |
-          # cd backend/django_project
-          # python manage.py test
-          echo "Backend tests placeholder - configure when tests are added"
-
-  # ============================================================================
-  # Job 2: Build e Push Docker Images
+  # Job 1: Build Docker Images
   # ============================================================================
   build:
     name: Build Docker Images
     runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
 
     permissions:
       contents: read
@@ -93,195 +33,48 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          images: ghcr.io/${{ github.repository_owner }}/myps-${{ matrix.service }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image - ${{ matrix.service }}
+      - name: Build and push - ${{ matrix.service }}
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.service == 'backend' && '.' || './frontend' }}
           file: ${{ matrix.service == 'backend' && './backend/Dockerfile' || './frontend/Dockerfile' }}
-          push: true
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # ============================================================================
-  # Job 3: Deploy para Docker Hub (Opcional)
-  # ============================================================================
-  deploy-docker-hub:
-    name: Deploy to Docker Hub
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Build and push to Docker Hub - Frontend
-        if: ${{ env.DOCKERHUB_USERNAME != '' }}
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/myps-frontend:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/myps-frontend:${{ github.sha }}
-
-      - name: Build and push to Docker Hub - Backend
-        if: ${{ env.DOCKERHUB_USERNAME != '' }}
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./backend/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/myps-backend:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/myps-backend:${{ github.sha }}
-
-  # ============================================================================
-  # Job 4: Deploy para VPS via SSH (Opcional)
-  # ============================================================================
-  deploy-vps:
-    name: Deploy to VPS
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1.0.0
-        if: ${{ secrets.VPS_HOST != '' }}
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
-          script: |
-            cd /var/www/myps || cd ~/myps
-            git pull origin main
-            docker compose down
-            docker compose pull
-            docker compose up -d --build
-            docker compose ps
-
-  # ============================================================================
-  # Job 5: Deploy para Railway (Opcional)
-  # ============================================================================
-  deploy-railway:
-    name: Deploy to Railway
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        if: ${{ secrets.RAILWAY_TOKEN != '' }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          railway up --service myps-frontend
-          railway up --service myps-backend
-        continue-on-error: true
-
-  # ============================================================================
-  # Job 6: Deploy para Render (Opcional)
-  # ============================================================================
-  deploy-render:
-    name: Deploy to Render
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Trigger Render Deploy
-        if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
-        run: |
-          curl "${{ secrets.RENDER_DEPLOY_HOOK }}"
-        continue-on-error: true
-
-  # ============================================================================
-  # Job 7: Deploy para AWS ECS (Opcional)
-  # ============================================================================
-  deploy-aws-ecs:
-    name: Deploy to AWS ECS
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
-
-      - name: Deploy to ECS
-        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
-        run: |
-          # Atualizar task definition e serviço ECS
-          aws ecs update-service --cluster myps-cluster --service myps-service --force-new-deployment
-        continue-on-error: true
-
-  # ============================================================================
-  # Job 8: Notificação de Deploy
+  # Job 2: Success Notification
   # ============================================================================
   notify:
-    name: Notify Deploy Status
+    name: Build Complete
     runs-on: ubuntu-latest
-    needs: [test, build]
+    needs: build
     if: always()
 
     steps:
-      - name: Send notification
+      - name: Show results
         run: |
-          echo "Deploy completed!"
+          echo "🎉 Build completed!"
           echo "Status: ${{ needs.build.result }}"
-
-      # Adicione aqui integração com Slack, Discord, etc se necessário
-      # - name: Slack Notification
-      #   uses: 8398a7/action-slack@v3
-      #   with:
-      #     status: ${{ job.status }}
-      #     webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          echo ""
+          echo "Docker images published to:"
+          echo "- ghcr.io/${{ github.repository_owner }}/myps-frontend:latest"
+          echo "- ghcr.io/${{ github.repository_owner }}/myps-backend:latest"
+          echo ""
+          echo "View packages: https://github.com/${{ github.repository_owner }}?tab=packages"
